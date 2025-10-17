@@ -4,16 +4,18 @@ import { persistReducer, persistStore } from 'redux-persist';
 
 import hospitalReducer from './hospitalSlice';
 import authReducer from './slice/authSlice';
+import userReducer from './slice/userSlice';
 
 const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
-  whitelist: ['auth', 'hospital'],
+  whitelist: ['auth', 'hospital', 'user'],
 };
 
 const rootReducer = combineReducers({
   auth: authReducer,
   hospital: hospitalReducer,
+  user: userReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

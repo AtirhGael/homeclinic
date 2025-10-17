@@ -1,17 +1,20 @@
 import { AppColors } from '@/constants/theme';
+import { useUserData } from '@/hooks/useUserData';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { signOut } from '@/store/slice/authSlice';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 interface SettingItem {
@@ -25,8 +28,12 @@ interface SettingItem {
 }
 
 const SettingsScreen = () => {
-  const { user } = useAppSelector((state) => state.auth);
+  const { user: authUser } = useAppSelector((state) => state.auth);
+  const { user, isLoading: userLoading, refetch } = useUserData();
   const dispatch = useAppDispatch();
+  
+  // Use user data from userSlice if available, fallback to auth user
+  const displayUser = user || authUser;
   
   const [notifications, setNotifications] = useState(true);
   const [biometric, setBiometric] = useState(false);
@@ -34,10 +41,25 @@ const SettingsScreen = () => {
   const [autoBackup, setAutoBackup] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [tempUserData, setTempUserData] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
-    phone: user?.phone || '',
+    name: displayUser?.fullname || '',
+    email: displayUser?.email || '',
+    phone: displayUser?.whatsappNum || '',
   });
+
+  useEffect(() => {
+    // Update temp data when user data changes
+    setTempUserData({
+      name: displayUser?.fullname || '',
+      email: displayUser?.email || '',
+      phone: displayUser?.whatsappNum || '',
+    });
+  }, [displayUser]);
+
+  useEffect(() => {
+   AsyncStorage.getItem('auth_token').then(token => {
+    console.log(token);
+   });
+  },[]);
 
   const handleSignOut = () => {
     Alert.alert(
@@ -280,9 +302,13 @@ const SettingsScreen = () => {
             <Text style={styles.userName}>Customize Your Experience</Text>
           </View>
           <View style={styles.profileIcon}>
-            <Text style={styles.profileText}>
-              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-            </Text>
+            {userLoading ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <Text style={styles.profileText}>
+                {displayUser?.fullname?.charAt(0)?.toUpperCase() || 'U'}
+              </Text>
+            )}
           </View>
         </View>
       </LinearGradient>
@@ -292,15 +318,44 @@ const SettingsScreen = () => {
         <View style={styles.profileSection}>
           <View style={styles.profileHeader}>
             <View style={styles.userAvatar}>
-              <Text style={styles.avatarText}>
-                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-              </Text>
+              {userLoading ? (
+                <ActivityIndicator size="small" color={AppColors.primary.main} />
+              ) : (
+                <Text style={styles.avatarText}>
+                  {displayUser?.fullname?.charAt(0)?.toUpperCase() || displayUser?.username?.charAt(0)?.toUpperCase() || 'U'}
+                </Text>
+              )}
             </View>
             <View style={styles.userInfo}>
-              <Text style={styles.userNameText}>{user?.name || 'User'}</Text>
-              <Text style={styles.userEmailText}>{user?.email || 'user@example.com'}</Text>
-              <Text style={styles.userRoleText}>{user?.role || 'Doctor'}</Text>
+              {userLoading ? (
+                <View style={styles.loadingUserInfo}>
+                  <ActivityIndicator size="small" color={AppColors.text.secondary} />
+                  <Text style={styles.loadingText}>Loading profile...</Text>
+                </View>
+              ) : (
+                <>
+                  <Text style={styles.userNameText}>
+                    {displayUser?.fullname || displayUser?.username || 'User'}
+                  </Text>
+                  <Text style={styles.userEmailText}>
+                    {displayUser?.email || 'user@example.com'}
+                  </Text>
+                  <Text style={styles.userRoleText}>Patient</Text>
+                  {displayUser?.whatsappNum && (
+                    <Text style={styles.userPhoneText}>
+                      📱 {displayUser.whatsappNum}
+                    </Text>
+                  )}
+                </>
+              )}
             </View>
+            <TouchableOpacity 
+              style={styles.refreshButton}
+              onPress={() => refetch()}
+              disabled={userLoading}
+            >
+              <Text style={styles.refreshIcon}>🔄</Text>
+            </TouchableOpacity>
           </View>
 
           {isEditing && (
@@ -482,6 +537,28 @@ const styles = StyleSheet.create({
     color: '#3b82f6',
     fontWeight: '600',
     textTransform: 'capitalize',
+  },
+  userPhoneText: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginTop: 4,
+  },
+  loadingUserInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  refreshButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+  },
+  refreshIcon: {
+    fontSize: 16,
   },
   editProfileForm: {
     marginTop: 20,

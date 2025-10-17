@@ -13,6 +13,7 @@ export interface User {
   email: string;
   whatsappNum?: string;
   password?: string;
+  isVerified?: boolean;
 }
 
 interface AuthState {

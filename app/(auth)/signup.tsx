@@ -1,5 +1,6 @@
 import { useMedicalToast } from '@/components/ui/medical-toast-provider';
 import { AppColors } from '@/constants/theme';
+import { tokenUtils } from '@/services/api';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { clearError, register } from '@/store/slice/authSlice';
 import { handleAuthError } from '@/utils/authErrorHandler';
@@ -99,6 +100,7 @@ export default function SignUpScreen() {
       
 
       if (register.fulfilled.match(response)) {
+        await tokenUtils.setToken(response.payload.token);
         showSuccess(
           'Account Created Successfully!',
           'Welcome to HomeClinic. You can now access all our medical services.',

@@ -1,10 +1,12 @@
 import { AppColors } from '@/constants/theme';
+import { useUserData } from '@/hooks/useUserData';
 import { useAppSelector } from '@/store/hooks';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Dimensions,
   ScrollView,
@@ -34,9 +36,14 @@ interface Post {
 }
 
 export default function HomeScreen() {
-  const { user } = useAppSelector((state) => state.auth);
+  const { user: authUser } = useAppSelector((state) => state.auth);
+  const { user, isLoading: userLoading } = useUserData();
   const [searchQuery, setSearchQuery] = useState('');
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+
+  const displayUser = user || authUser;
+  // console.log(displayUser, 'displayUser');
+  
 
   const [posts, setPosts] = useState<Post[]>([
     {
@@ -237,8 +244,19 @@ export default function HomeScreen() {
           <View style={styles.headerContent}>
             <View style={styles.welcomeSection}>
               <Text style={styles.greeting}>{getGreeting()}!</Text>
-              <Text style={styles.userName}>Welcome back, {user?.username || 'User'}</Text>
-              <Text style={styles.subtitle}>Stay updated with the latest health insights</Text>
+              {userLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="small" color={AppColors.text.inverse} />
+                  <Text style={styles.loadingText}>Loading profile...</Text>
+                </View>
+              ) : (
+                <>
+                  <Text style={styles.userName}>
+                    Welcome back, {displayUser?.fullname || displayUser?.username || 'User'}
+                  </Text>
+                  <Text style={styles.subtitle}>Stay updated with the latest health insights</Text>
+                </>
+              )}
             </View>
             <View style={styles.headerActions}>
              
@@ -320,6 +338,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.7)',
     lineHeight: 20,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginVertical: 4,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: '500',
   },
   headerActions: {
     flexDirection: 'row',

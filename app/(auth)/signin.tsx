@@ -1,5 +1,6 @@
 import { useMedicalToast } from '@/components/ui/medical-toast-provider';
 import { AppColors } from '@/constants/theme';
+import { tokenUtils } from '@/services/api';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { clearError, login } from '@/store/slice/authSlice';
 import { handleAuthError } from '@/utils/authErrorHandler';
@@ -71,6 +72,7 @@ export default function SignInScreen() {
       }));
       
       if (login.fulfilled.match(response)) {
+        await tokenUtils.setToken(response.payload.token);
         showSuccess(
           'Welcome Back!',
           'You have successfully signed in to HomeClinic.',
