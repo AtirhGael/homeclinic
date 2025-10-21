@@ -36,9 +36,9 @@ export const getUserIdFromToken = async (): Promise<string | null> => {
     }
     
     const decoded = decodeJWT(token);
-    // console.log(decoded,'decoded decoded');
+    // console.log(decoded.id,'decoded decoded');
     
-    return decoded?.userId || decoded?.id || decoded?.sub || null;
+    return decoded?.id;
   } catch (error) {
     console.error('Error getting user ID from token:', error);
     return null;

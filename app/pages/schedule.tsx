@@ -1,8 +1,10 @@
 import BookingModal from '@/components/booking/BookingModal';
 import { AppColors } from '@/constants/theme';
+import { useAppDispatch } from '@/store/hooks';
+import { getNStaffs } from '@/store/slice/userSlice';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Dimensions,
   ScrollView,
@@ -38,6 +40,15 @@ const SchedulePage = () => {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<HealthcareProvider | null>(null);
 
+  const dispatch = useAppDispatch();
+  
+   useEffect(() => { 
+    const staffs = async () => {
+      const response = await dispatch(getNStaffs(5));
+      console.log(response.payload, 'staffs from schedule page');
+    }
+    staffs();
+   }, []);
   const providers: HealthcareProvider[] = [
     {
       id: '1',

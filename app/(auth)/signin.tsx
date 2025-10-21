@@ -35,7 +35,6 @@ export default function SignInScreen() {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error for this field when user starts typing
     setFieldErrors(prev => ({ ...prev, [field]: false }));
     dispatch(clearError());
   };
@@ -58,7 +57,6 @@ export default function SignInScreen() {
 
     setFieldErrors(errors);
     
-    // Return true if no errors
     return !Object.values(errors).some(error => error);
   };
 

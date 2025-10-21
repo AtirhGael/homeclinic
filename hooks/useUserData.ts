@@ -1,23 +1,18 @@
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { getUser } from '@/store/slice/userSlice';
-import { getUserIdFromToken } from '@/utils/jwtUtils';
 import { useEffect } from 'react';
 
 export const useUserData = () => {
   const dispatch = useAppDispatch();
   const { user, isLoading, error } = useAppSelector((state) => state.user);
-  const { isAuthenticated } = useAppSelector((state) => state.auth);
+  const { isAuthenticated, id: userId } = useAppSelector((state) => state.auth);
 
   useEffect(() => {
     const fetchUserData = async () => {
-      if (isAuthenticated && !user) {
+      if (isAuthenticated && userId && !user) {
         try {
-          const userId = await getUserIdFromToken();
-          if (userId) {
-            const result = dispatch(getUser(userId));
-            console.log(result, 'getUserIdFromToken');
-            
-          }
+          // console.log(userId, 'userId from auth state');
+          dispatch(getUser(userId));
         } catch (error) {
           console.error('Error fetching user data:', error);
         }
@@ -25,14 +20,13 @@ export const useUserData = () => {
     };
 
     fetchUserData();
-  }, [isAuthenticated, user, dispatch]);
+  }, [isAuthenticated, userId, user, dispatch]);
 
   return {
     user,
     isLoading,
     error,
-    refetch: async () => {
-      const userId = await getUserIdFromToken();
+    refetch: () => {
       if (userId) {
         dispatch(getUser(userId));
       }

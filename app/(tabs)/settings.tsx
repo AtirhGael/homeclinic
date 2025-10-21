@@ -1,13 +1,15 @@
 import { AppColors } from '@/constants/theme';
-import { useUserData } from '@/hooks/useUserData';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { signOut } from '@/store/slice/authSlice';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getUser, updateUserById, updateUserProfilePicture } from '@/store/slice/userSlice';
+import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   ScrollView,
   StyleSheet,
   Switch,
@@ -23,17 +25,14 @@ interface SettingItem {
   description?: string;
   type: 'toggle' | 'navigation' | 'action' | 'info';
   value?: boolean;
-  icon: string;
+  icon: keyof typeof Ionicons.glyphMap;
   action?: () => void;
 }
 
 const SettingsScreen = () => {
-  const { user: authUser } = useAppSelector((state) => state.auth);
-  const { user, isLoading: userLoading, refetch } = useUserData();
+  const { id: userId } = useAppSelector((state) => state.auth);
+  const { user: displayUser, isLoading: userLoading, error } = useAppSelector((state) => state.user);
   const dispatch = useAppDispatch();
-  
-  // Use user data from userSlice if available, fallback to auth user
-  const displayUser = user || authUser;
   
   const [notifications, setNotifications] = useState(true);
   const [biometric, setBiometric] = useState(false);
@@ -43,23 +42,125 @@ const SettingsScreen = () => {
   const [tempUserData, setTempUserData] = useState({
     name: displayUser?.fullname || '',
     email: displayUser?.email || '',
-    phone: displayUser?.whatsappNum || '',
+    phone: displayUser?.phone || displayUser?.whatsappNum || '',
+    about: displayUser?.about || '',
   });
 
   useEffect(() => {
-    // Update temp data when user data changes
+    const fetchUserData = async () => {
+      if (userId && !displayUser) {
+        await dispatch(getUser(userId));
+      }
+    };
+    fetchUserData();
     setTempUserData({
       name: displayUser?.fullname || '',
       email: displayUser?.email || '',
-      phone: displayUser?.whatsappNum || '',
+      phone: displayUser?.phone || displayUser?.whatsappNum || '',
+      about: displayUser?.about || '',
     });
-  }, [displayUser]);
+  }, [displayUser, userId, dispatch]);
 
-  useEffect(() => {
-   AsyncStorage.getItem('auth_token').then(token => {
-    console.log(token);
-   });
-  },[]);
+  const handleRefreshUserData = () => {
+    if (userId) {
+      dispatch(getUser(userId));
+    }
+  };
+
+  const handleImagePicker = async () => {
+    try {
+      // Request permission
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (permissionResult.granted === false) {
+        Alert.alert('Permission Required', 'Permission to access photo library is required!');
+        return;
+      }
+
+      // Show options for camera or gallery
+      Alert.alert(
+        'Select Profile Picture',
+        'Choose how you want to update your profile picture',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Camera', 
+            onPress: () => openCamera() 
+          },
+          { 
+            text: 'Gallery', 
+            onPress: () => openGallery() 
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Error requesting permission:', error);
+      Alert.alert('Error', 'Failed to access photo library');
+    }
+  };
+
+  const openCamera = async () => {
+    try {
+      const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
+      
+      if (cameraPermission.granted === false) {
+        Alert.alert('Permission Required', 'Permission to access camera is required!');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        handleImageSelected(result.assets[0]);
+      }
+    } catch (error) {
+      console.error('Error opening camera:', error);
+      Alert.alert('Error', 'Failed to open camera');
+    }
+  };
+
+  const openGallery = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        handleImageSelected(result.assets[0]);
+      }
+    } catch (error) {
+      console.error('Error opening gallery:', error);
+      Alert.alert('Error', 'Failed to open gallery');
+    }
+  };
+
+  const handleImageSelected = async (imageAsset: ImagePicker.ImagePickerAsset) => {
+    try {
+      if (!userId || !displayUser) {
+        Alert.alert('Error', 'User information not available');
+        return;
+      }
+
+      const updatedUser = {
+        ...displayUser,
+        profilePicture: imageAsset.uri,
+      };
+
+      await dispatch(updateUserProfilePicture(updatedUser));
+      Alert.alert('Success', 'Profile picture updated successfully!');
+    } catch (error) {
+      console.error('Error updating profile picture:', error);
+      Alert.alert('Error', 'Failed to update profile picture');
+    }
+  };
 
   const handleSignOut = () => {
     Alert.alert(
@@ -76,10 +177,28 @@ const SettingsScreen = () => {
     );
   };
 
-  const handleSaveProfile = () => {
-    // Here you would typically update the user profile in your backend
-    Alert.alert('Success', 'Profile updated successfully!');
-    setIsEditing(false);
+  const handleSaveProfile = async () => {
+    try {
+      if (!userId || !displayUser) {
+        Alert.alert('Error', 'User information not available');
+        return;
+      }
+
+      const updatedUser = {
+        ...displayUser,
+        fullname: tempUserData.name,
+        email: tempUserData.email,
+        phone: tempUserData.phone,
+        about: tempUserData.about,
+      };
+
+      await dispatch(updateUserById(updatedUser));
+      Alert.alert('Success', 'Profile updated successfully!');
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      Alert.alert('Error', 'Failed to update profile');
+    }
   };
 
   const handleChangePassword = () => {
@@ -131,7 +250,7 @@ const SettingsScreen = () => {
           title: 'Edit Profile',
           description: 'Update your personal information',
           type: 'action' as const,
-          icon: '👤',
+          icon: 'person-outline' as keyof typeof Ionicons.glyphMap,
           action: () => setIsEditing(!isEditing),
         },
         {
@@ -139,7 +258,7 @@ const SettingsScreen = () => {
           title: 'Change Password',
           description: 'Update your account password',
           type: 'action' as const,
-          icon: '🔒',
+          icon: 'lock-closed-outline' as keyof typeof Ionicons.glyphMap,
           action: handleChangePassword,
         },
       ],
@@ -152,7 +271,7 @@ const SettingsScreen = () => {
           title: 'Push Notifications',
           description: 'Receive notifications for appointments and messages',
           type: 'toggle' as const,
-          icon: '🔔',
+          icon: 'notifications-outline' as keyof typeof Ionicons.glyphMap,
           value: notifications,
         },
         {
@@ -160,7 +279,7 @@ const SettingsScreen = () => {
           title: 'Biometric Login',
           description: 'Use fingerprint or face ID to login',
           type: 'toggle' as const,
-          icon: '👆',
+          icon: 'finger-print-outline' as keyof typeof Ionicons.glyphMap,
           value: biometric,
         },
         {
@@ -168,7 +287,7 @@ const SettingsScreen = () => {
           title: 'Dark Mode',
           description: 'Switch to dark theme',
           type: 'toggle' as const,
-          icon: '🌙',
+          icon: 'moon-outline' as keyof typeof Ionicons.glyphMap,
           value: darkMode,
         },
         {
@@ -176,7 +295,7 @@ const SettingsScreen = () => {
           title: 'Auto Backup',
           description: 'Automatically backup your data',
           type: 'toggle' as const,
-          icon: '☁️',
+          icon: 'cloud-upload-outline' as keyof typeof Ionicons.glyphMap,
           value: autoBackup,
         },
       ],
@@ -189,7 +308,7 @@ const SettingsScreen = () => {
           title: 'Help Center',
           description: 'Get help and support',
           type: 'navigation' as const,
-          icon: '❓',
+          icon: 'help-circle-outline' as keyof typeof Ionicons.glyphMap,
           action: handleContactSupport,
         },
         {
@@ -197,7 +316,7 @@ const SettingsScreen = () => {
           title: 'Contact Support',
           description: 'Reach out to our support team',
           type: 'navigation' as const,
-          icon: '📞',
+          icon: 'call-outline' as keyof typeof Ionicons.glyphMap,
           action: handleContactSupport,
         },
         {
@@ -205,7 +324,7 @@ const SettingsScreen = () => {
           title: 'Send Feedback',
           description: 'Help us improve the app',
           type: 'navigation' as const,
-          icon: '💭',
+          icon: 'chatbubble-outline' as keyof typeof Ionicons.glyphMap,
           action: () => Alert.alert('Feedback', 'Thank you for your feedback!'),
         },
       ],
@@ -217,21 +336,21 @@ const SettingsScreen = () => {
           id: 'privacy',
           title: 'Privacy Policy',
           type: 'navigation' as const,
-          icon: '🛡️',
+          icon: 'shield-checkmark-outline' as keyof typeof Ionicons.glyphMap,
           action: handlePrivacyPolicy,
         },
         {
           id: 'terms',
           title: 'Terms of Service',
           type: 'navigation' as const,
-          icon: '📄',
+          icon: 'document-text-outline' as keyof typeof Ionicons.glyphMap,
           action: handleTermsOfService,
         },
         {
           id: 'about',
           title: 'About',
           type: 'navigation' as const,
-          icon: 'ℹ️',
+          icon: 'information-circle-outline' as keyof typeof Ionicons.glyphMap,
           action: handleAbout,
         },
       ],
@@ -264,7 +383,7 @@ const SettingsScreen = () => {
         disabled={item.type === 'toggle'}
       >
         <View style={styles.settingIcon}>
-          <Text style={styles.iconText}>{item.icon}</Text>
+          <Ionicons name={item.icon} size={24} color={AppColors.primary.main} />
         </View>
         <View style={styles.settingContent}>
           <Text style={styles.settingTitle}>{item.title}</Text>
@@ -282,16 +401,15 @@ const SettingsScreen = () => {
             />
           )}
           {item.type === 'navigation' && (
-            <Text style={styles.chevron}>▶</Text>
+            <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
           )}
         </View>
       </TouchableOpacity>
     );
   };
-
+  
   return (
     <View style={styles.container}>
-      {/* Header */}
       <LinearGradient
         colors={[AppColors.gradients.cool[0], AppColors.gradients.cool[1]]}
         style={styles.header}
@@ -304,9 +422,15 @@ const SettingsScreen = () => {
           <View style={styles.profileIcon}>
             {userLoading ? (
               <ActivityIndicator size="small" color="white" />
+            ) : displayUser?.profilePicture ? (
+              <Image 
+                source={{ uri: displayUser.profilePicture }} 
+                style={styles.headerProfileImage}
+                resizeMode="cover"
+              />
             ) : (
               <Text style={styles.profileText}>
-                {displayUser?.fullname?.charAt(0)?.toUpperCase() || 'U'}
+                {displayUser?.fullname?.charAt(0)?.toUpperCase() || ''}
               </Text>
             )}
           </View>
@@ -314,17 +438,32 @@ const SettingsScreen = () => {
       </LinearGradient>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* User Profile Section */}
+
         <View style={styles.profileSection}>
           <View style={styles.profileHeader}>
-            <View style={styles.userAvatar}>
-              {userLoading ? (
-                <ActivityIndicator size="small" color={AppColors.primary.main} />
-              ) : (
-                <Text style={styles.avatarText}>
-                  {displayUser?.fullname?.charAt(0)?.toUpperCase() || displayUser?.username?.charAt(0)?.toUpperCase() || 'U'}
-                </Text>
-              )}
+            <View style={styles.userAvatarContainer}>
+              <View style={styles.userAvatar}>
+                {userLoading ? (
+                  <ActivityIndicator size="small" color={AppColors.primary.main} />
+                ) : displayUser?.profilePicture ? (
+                  <Image 
+                    source={{ uri: displayUser.profilePicture }} 
+                    style={styles.profileImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Text style={styles.avatarText}>
+                    {displayUser?.fullname?.charAt(0)?.toUpperCase() || displayUser?.username?.charAt(0)?.toUpperCase() || 'U'}
+                  </Text>
+                )}
+              </View>
+              <TouchableOpacity 
+                style={styles.editImageButton}
+                onPress={handleImagePicker}
+                disabled={userLoading}
+              >
+                <Ionicons name="camera-outline" size={16} color="white" />
+              </TouchableOpacity>
             </View>
             <View style={styles.userInfo}>
               {userLoading ? (
@@ -340,21 +479,45 @@ const SettingsScreen = () => {
                   <Text style={styles.userEmailText}>
                     {displayUser?.email || 'user@example.com'}
                   </Text>
-                  <Text style={styles.userRoleText}>Patient</Text>
-                  {displayUser?.whatsappNum && (
-                    <Text style={styles.userPhoneText}>
-                      📱 {displayUser.whatsappNum}
-                    </Text>
+                  {/* <Text style={styles.userRoleText}>Patient</Text> */}
+                  {(displayUser?.phone || displayUser?.whatsappNum) && (
+                    <View style={styles.contactRow}>
+                      <Ionicons name="call-outline" size={14} color="#6b7280" />
+                      <Text style={styles.userPhoneText}>
+                        {displayUser?.phone || displayUser?.whatsappNum}
+                      </Text>
+                    </View>
+                  )}
+                  {displayUser?.address && (
+                    <View style={styles.contactRow}>
+                      <Ionicons name="location-outline" size={14} color="#6b7280" />
+                      <Text style={styles.userAddressText}>
+                        {displayUser.address}
+                      </Text>
+                    </View>
+                  )}
+                  {displayUser?.about && (
+                    <View style={styles.aboutSection}>
+                      <Text style={styles.aboutText} numberOfLines={2}>
+                        {displayUser.about}
+                      </Text>
+                    </View>
+                  )}
+                  {displayUser?.balance !== null && displayUser?.balance !== undefined && (
+                    <View style={styles.balanceSection}>
+                      <Text style={styles.balanceLabel}>Balance:</Text>
+                      <Text style={styles.balanceAmount}>${displayUser.balance || 0}</Text>
+                    </View>
                   )}
                 </>
               )}
             </View>
             <TouchableOpacity 
               style={styles.refreshButton}
-              onPress={() => refetch()}
+              onPress={handleRefreshUserData}
               disabled={userLoading}
             >
-              <Text style={styles.refreshIcon}>🔄</Text>
+              <Ionicons name="refresh-outline" size={16} color={AppColors.primary.main} />
             </TouchableOpacity>
           </View>
 
@@ -390,6 +553,18 @@ const SettingsScreen = () => {
                   onChangeText={(text) => setTempUserData({ ...tempUserData, phone: text })}
                   placeholder="Enter your phone number"
                   keyboardType="phone-pad"
+                />
+              </View>
+              
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>About</Text>
+                <TextInput
+                  style={[styles.textInput, styles.textArea]}
+                  value={tempUserData.about}
+                  onChangeText={(text) => setTempUserData({ ...tempUserData, about: text })}
+                  placeholder="Tell us about yourself"
+                  multiline
+                  numberOfLines={3}
                 />
               </View>
               
@@ -429,7 +604,8 @@ const SettingsScreen = () => {
         {/* Sign Out Button */}
         <View style={styles.signOutSection}>
           <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-            <Text style={styles.signOutText}>🚪 Sign Out</Text>
+            <Ionicons name="log-out-outline" size={20} color="#fff" style={styles.signOutIcon} />
+            <Text style={styles.signOutText}>Sign Out</Text>
           </TouchableOpacity>
         </View>
 
@@ -476,6 +652,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  headerProfileImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 25,
   },
   profileText: {
     fontSize: 20,
@@ -504,6 +686,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  userAvatarContainer: {
+    position: 'relative',
+    marginRight: 16,
+  },
   userAvatar: {
     width: 70,
     height: 70,
@@ -511,7 +697,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#e5e7eb',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    overflow: 'hidden',
+  },
+  profileImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 35,
+  },
+  editImageButton: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: AppColors.primary.main,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'white',
   },
   avatarText: {
     fontSize: 28,
@@ -541,7 +745,48 @@ const styles = StyleSheet.create({
   userPhoneText: {
     fontSize: 14,
     color: '#6b7280',
+    marginLeft: 4,
+  },
+  contactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginTop: 4,
+  },
+  userAddressText: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginLeft: 4,
+  },
+  aboutSection: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+  },
+  aboutText: {
+    fontSize: 14,
+    color: '#6b7280',
+    fontStyle: 'italic',
+  },
+  balanceSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#f0f9ff',
+    borderRadius: 8,
+  },
+  balanceLabel: {
+    fontSize: 14,
+    color: '#374151',
+    fontWeight: '600',
+  },
+  balanceAmount: {
+    fontSize: 16,
+    color: '#059669',
+    fontWeight: 'bold',
+    marginLeft: 8,
   },
   loadingUserInfo: {
     flexDirection: 'row',
@@ -556,9 +801,6 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 8,
     backgroundColor: 'rgba(59, 130, 246, 0.1)',
-  },
-  refreshIcon: {
-    fontSize: 16,
   },
   editProfileForm: {
     marginTop: 20,
@@ -582,6 +824,10 @@ const styles = StyleSheet.create({
     padding: 16,
     fontSize: 16,
     backgroundColor: '#f9fafb',
+  },
+  textArea: {
+    height: 80,
+    textAlignVertical: 'top',
   },
   editActions: {
     flexDirection: 'row',
@@ -649,9 +895,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 16,
   },
-  iconText: {
-    fontSize: 20,
-  },
   settingContent: {
     flex: 1,
   },
@@ -669,10 +912,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  chevron: {
-    fontSize: 14,
-    color: '#9ca3af',
-  },
   separator: {
     height: 1,
     backgroundColor: '#f3f4f6',
@@ -687,6 +926,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
     shadowColor: '#ef4444',
     shadowOffset: {
       width: 0,
@@ -695,6 +936,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 5,
     elevation: 8,
+  },
+  signOutIcon: {
+    marginRight: 8,
   },
   signOutText: {
     fontSize: 18,

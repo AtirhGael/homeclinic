@@ -1,16 +1,16 @@
 import { AppColors } from '@/constants/theme';
-import { useUserData } from '@/hooks/useUserData';
-import { useAppSelector } from '@/store/hooks';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { getUser } from '@/store/slice/userSlice';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Dimensions,
   ScrollView,
-  // StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -36,13 +36,20 @@ interface Post {
 }
 
 export default function HomeScreen() {
-  const { user: authUser } = useAppSelector((state) => state.auth);
-  const { user, isLoading: userLoading } = useUserData();
+  const { user: authUser, id: userId } = useAppSelector((state) => state.auth);
+  const { user, isLoading: userLoading } = useAppSelector((state) => state.user);
+  const dispatch = useAppDispatch();
   const [searchQuery, setSearchQuery] = useState('');
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
 
   const displayUser = user || authUser;
   // console.log(displayUser, 'displayUser');
+  
+  useEffect(() => {
+    if (userId && !user) {
+      dispatch(getUser(userId));
+    }
+  }, [userId, user, dispatch]);
   
 
   const [posts, setPosts] = useState<Post[]>([
@@ -52,7 +59,7 @@ export default function HomeScreen() {
       doctorSpecialty: 'Cardiologist',
       doctorAvatar: 'SJ',
       timeAgo: '2 hours ago',
-      content: '🫀 Heart Health Tip: Did you know that just 30 minutes of walking daily can reduce your risk of heart disease by 35%? Start small - even a 10-minute walk after meals makes a difference! #HeartHealth #Prevention',
+      content: 'Heart Health Tip: Did you know that just 30 minutes of walking daily can reduce your risk of heart disease by 35%? Start small - even a 10-minute walk after meals makes a difference! #HeartHealth #Prevention',
       likes: 124,
       comments: 18,
       shares: 12,
@@ -65,7 +72,7 @@ export default function HomeScreen() {
       doctorSpecialty: 'Pediatrician',
       doctorAvatar: 'MC',
       timeAgo: '4 hours ago',
-      content: '📢 Important Update: Our pediatric clinic will be offering extended hours on weekends starting next month. Book your appointments early! We\'re here to make healthcare more accessible for your little ones. 👶',
+      content: 'Important Update: Our pediatric clinic will be offering extended hours on weekends starting next month. Book your appointments early! We\'re here to make healthcare more accessible for your little ones.',
       imageCount: 2,
       likes: 89,
       comments: 25,
@@ -79,7 +86,7 @@ export default function HomeScreen() {
       doctorSpecialty: 'Nutritionist',
       doctorAvatar: 'ER',
       timeAgo: '6 hours ago',
-      content: '🥗 Nutrition Facts: Incorporating colorful vegetables in your diet isn\'t just visually appealing - each color represents different nutrients! Red tomatoes (lycopene), orange carrots (beta-carotene), green spinach (iron & folate). Eat the rainbow! 🌈',
+      content: 'Nutrition Facts: Incorporating colorful vegetables in your diet isn\'t just visually appealing - each color represents different nutrients! Red tomatoes (lycopene), orange carrots (beta-carotene), green spinach (iron & folate). Eat the rainbow!',
       likes: 156,
       comments: 32,
       shares: 24,
@@ -92,7 +99,7 @@ export default function HomeScreen() {
       doctorSpecialty: 'Orthopedic Surgeon',
       doctorAvatar: 'JW',
       timeAgo: '8 hours ago',
-      content: '🔬 Latest Research: New minimally invasive techniques for joint replacement are showing 40% faster recovery times. Excited to implement these innovations in our practice. The future of orthopedic surgery is here!',
+      content: 'Latest Research: New minimally invasive techniques for joint replacement are showing 40% faster recovery times. Excited to implement these innovations in our practice. The future of orthopedic surgery is here!',
       imageCount: 1,
       likes: 78,
       comments: 15,
@@ -120,11 +127,22 @@ export default function HomeScreen() {
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case 'health-tip': return '💡';
-      case 'announcement': return '📢';
-      case 'research': return '🔬';
-      default: return '📝';
+      case 'health-tip': return { name: 'lightbulb-outline', library: 'Ionicons' };
+      case 'announcement': return { name: 'megaphone-outline', library: 'Ionicons' };
+      case 'research': return { name: 'flask-outline', library: 'Ionicons' };
+      default: return { name: 'document-text-outline', library: 'Ionicons' };
     }
+  };
+
+  const renderCategoryIcon = (category: string, size = 16, color = 'white') => {
+    const iconConfig = getCategoryIcon(category);
+    return (
+      <Ionicons 
+        name={iconConfig.name as any} 
+        size={size} 
+        color={color} 
+      />
+    );
   };
 
   const handleLike = (postId: string) => {
@@ -142,7 +160,7 @@ export default function HomeScreen() {
   };
 
   const handleComment = (postId: string) => {
-    handleViewPost(postId); // Navigate to post details to see comments
+    handleViewPost(postId);
   };
 
   const handleShare = (postId: string) => {
@@ -179,7 +197,7 @@ export default function HomeScreen() {
         </View>
         <View style={styles.postMeta}>
           <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(post.category) }]}>
-            <Text style={styles.categoryIcon}>{getCategoryIcon(post.category)}</Text>
+            {renderCategoryIcon(post.category)}
           </View>
           <Text style={styles.timeAgo}>{post.timeAgo}</Text>
         </View>
@@ -192,7 +210,10 @@ export default function HomeScreen() {
         {/* Image Indicator */}
         {post.imageCount && (
           <View style={styles.imageIndicator}>
-            <Text style={styles.imageText}>📷 {post.imageCount} image{post.imageCount > 1 ? 's' : ''}</Text>
+            <View style={styles.imageTextContainer}>
+              <Ionicons name="camera-outline" size={14} color={AppColors.text.secondary} />
+              <Text style={styles.imageText}>{post.imageCount} image{post.imageCount > 1 ? 's' : ''}</Text>
+            </View>
           </View>
         )}
         
@@ -206,9 +227,12 @@ export default function HomeScreen() {
           style={[styles.actionButton, post.isLiked && styles.likedButton]}
           onPress={() => handleLike(post.id)}
         >
-          <Text style={[styles.actionIcon, post.isLiked && styles.likedIcon]}>
-            {post.isLiked ? '❤️' : '🤍'}
-          </Text>
+          <Ionicons 
+            name={post.isLiked ? "heart" : "heart-outline"} 
+            size={18} 
+            color={post.isLiked ? AppColors.medical.heart : AppColors.text.secondary}
+            style={styles.actionIcon}
+          />
           <Text style={[styles.actionText, post.isLiked && styles.likedText]}>
             {post.likes}
           </Text>
@@ -218,7 +242,12 @@ export default function HomeScreen() {
           style={styles.actionButton}
           onPress={() => handleComment(post.id)}
         >
-          <Text style={styles.actionIcon}>�</Text>
+          <Ionicons 
+            name="chatbubble-outline" 
+            size={18} 
+            color={AppColors.text.secondary}
+            style={styles.actionIcon}
+          />
           <Text style={styles.actionText}>{post.comments}</Text>
         </TouchableOpacity>
 
@@ -226,7 +255,12 @@ export default function HomeScreen() {
           style={styles.actionButton}
           onPress={() => handleShare(post.id)}
         >
-          <Text style={styles.actionIcon}>📤</Text>
+          <Ionicons 
+            name="share-outline" 
+            size={18} 
+            color={AppColors.text.secondary}
+            style={styles.actionIcon}
+          />
           <Text style={styles.actionText}>{post.shares}</Text>
         </TouchableOpacity>
       </View>
@@ -254,14 +288,16 @@ export default function HomeScreen() {
                   <Text style={styles.userName}>
                     Welcome back, {displayUser?.fullname || displayUser?.username || 'User'}
                   </Text>
-                  <Text style={styles.subtitle}>Stay updated with the latest health insights</Text>
+                  <Text style={styles.subtitle}>
+                    {displayUser?.about || 'Stay updated with the latest health insights'}
+                  </Text>
                 </>
               )}
             </View>
             <View style={styles.headerActions}>
              
               <TouchableOpacity style={styles.headerButton} onPress={handleNotifications}>
-                <Text style={styles.headerButtonIcon}>🔔</Text>
+                <Ionicons name="notifications-outline" size={20} color="white" />
                 <View style={styles.notificationBadge}>
                   <Text style={styles.badgeText}>3</Text>
                 </View>
@@ -279,7 +315,7 @@ export default function HomeScreen() {
               onSubmitEditing={handleSearch}
             />
             <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-              <Text style={styles.searchButtonIcon}>🔍</Text>
+              <Ionicons name="search" size={16} color="white" />
             </TouchableOpacity>
           </View>
         </LinearGradient>
@@ -363,9 +399,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
   },
-  headerButtonIcon: {
-    fontSize: 20,
-  },
+
   notificationBadge: {
     position: 'absolute',
     top: -2,
@@ -404,9 +438,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  searchButtonIcon: {
-    fontSize: 16,
-  },
+
   feedContainer: {
     padding: 20,
   },
@@ -479,9 +511,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 4,
   },
-  categoryIcon: {
-    fontSize: 16,
-  },
+
   timeAgo: {
     fontSize: 12,
     color: AppColors.text.tertiary,
@@ -505,6 +535,11 @@ const styles = StyleSheet.create({
     padding: 8,
     marginBottom: 12,
     alignSelf: 'flex-start',
+  },
+  imageTextContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   imageText: {
     fontSize: 12,
@@ -530,12 +565,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#fef2f2',
   },
   actionIcon: {
-    fontSize: 18,
     marginRight: 6,
   },
-  likedIcon: {
-    // No additional styling needed, emoji handles color
-  },
+
   actionText: {
     fontSize: 14,
     fontWeight: '600',

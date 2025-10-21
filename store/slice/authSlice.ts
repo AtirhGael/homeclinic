@@ -7,18 +7,31 @@ const TOKEN_KEY = 'auth_token';
 const USER_KEY = 'user_data';
 
 export interface User {
-  id?: string;
+  id: string;
   fullname: string;
   username: string;
   email: string;
+  phone?: string;
   whatsappNum?: string;
+  about?: string;
+  profilePicture?: string;
+  photos?: string[];
+  address?: string;
+  location?: string;
+  balance?: number;
+  totalIn?: number;
+  totalOut?: number;
+  botEngagement?: string;
+  organization?: string;
   password?: string;
+  MedDetails?: any[];
   isVerified?: boolean;
 }
 
 interface AuthState {
   user: User | null;
   token: string | null;
+  id: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   error: string | null;
@@ -27,6 +40,7 @@ interface AuthState {
 const initialState: AuthState = {
   user: null,
   token: null,
+  id: null,
   isLoading: false,
   isAuthenticated: false,
   error: null,
@@ -85,13 +99,17 @@ export const checkAuthState = createAsyncThunk(
 
       if (token && userData) {
         const user = JSON.parse(userData);
-        return { user, token };
+        return { 
+          user: user, 
+          token: token,
+          id: user.id || null
+        };
       }
 
-      return { user: null, token: null };
+      return { user: null, token: null, id: null };
     } catch (error) {
       console.error('Error checking auth state:', error);
-      return { user: null, token: null };
+      return { user: null, token: null, id: null };
     }
   }
 );
@@ -112,8 +130,9 @@ const authSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
-    setUser: (state, action: PayloadAction<User>) => {
+    setUser: (state, action: PayloadAction<User & { id?: string }>) => {
       state.user = action.payload;
+      state.id = action.payload.id || null;
       state.isAuthenticated = true;
     },
     updateUserProfile: (state, action: PayloadAction<Partial<User>>) => {
@@ -133,8 +152,16 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.user = action.payload.user;
         state.token = action.payload.token;
+        state.id = action.payload.id;
         state.isAuthenticated = true;
         state.error = null;
+        
+        // Store token and user data
+        SecureStore.setItemAsync(TOKEN_KEY, action.payload.token);
+        AsyncStorage.setItem(USER_KEY, JSON.stringify({
+          ...action.payload.user,
+          id: action.payload.id
+        }));
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;
@@ -151,8 +178,16 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.user = action.payload.user;
         state.token = action.payload.token;
+        state.id = action.payload.id;
         state.isAuthenticated = true;
         state.error = null;
+        
+        // Store token and user data
+        SecureStore.setItemAsync(TOKEN_KEY, action.payload.token);
+        AsyncStorage.setItem(USER_KEY, JSON.stringify({
+          ...action.payload.user,
+          id: action.payload.id
+        }));
       })
       .addCase(register.rejected, (state, action) => {
         state.isLoading = false;
@@ -183,12 +218,14 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.user = action.payload.user;
         state.token = action.payload.token;
+        state.id = action.payload.id;
         state.isAuthenticated = !!action.payload.user;
       })
       .addCase(checkAuthState.rejected, (state) => {
         state.isLoading = false;
         state.user = null;
         state.token = null;
+        state.id = null;
         state.isAuthenticated = false;
       });
 
@@ -201,6 +238,7 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.user = null;
         state.token = null;
+        state.id = null;
         state.isAuthenticated = false;
         state.error = null;
       })

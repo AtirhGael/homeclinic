@@ -93,7 +93,7 @@ export default function SignUpScreen() {
       whatsappNum: formData.whatsappNum,
       password: formData.confirmPassword,
     };
-    console.log('payload data', payloadData);
+    // console.log('payload data', payloadData);
     try {
       const response = await dispatch(register(payloadData));
       console.log(response.payload, 'payload data');
@@ -120,7 +120,7 @@ export default function SignUpScreen() {
         router.replace('/(tabs)');
       } else {
         // Handle rejection
-        console.log(response.payload, 'payload data');
+        // console.log(response.payload, 'payload data');
         
         handleAuthError(response.payload || response.error, 'signup', {
           useToast: true,
