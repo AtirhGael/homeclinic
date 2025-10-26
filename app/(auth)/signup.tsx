@@ -4,6 +4,7 @@ import { tokenUtils } from '@/services/api';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { clearError, register } from '@/store/slice/authSlice';
 import { handleAuthError } from '@/utils/authErrorHandler';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
@@ -37,6 +38,9 @@ export default function SignUpScreen() {
     password: false,
     confirmPassword: false,
   });
+  
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const dispatch = useAppDispatch();
   const { isLoading, error } = useAppSelector((state) => state.auth);
@@ -223,15 +227,28 @@ export default function SignUpScreen() {
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={[styles.input, fieldErrors.password && styles.inputError]}
-                placeholder="Create a password"
-                placeholderTextColor={AppColors.text.tertiary}
-                value={formData.password}
-                onChangeText={(value) => handleInputChange('password', value)}
-                secureTextEntry
-                returnKeyType="next"
-              />
+              <View style={styles.passwordInputContainer}>
+                <TextInput
+                  style={[styles.input, styles.passwordInput, fieldErrors.password && styles.inputError]}
+                  placeholder="Create a password"
+                  placeholderTextColor={AppColors.text.tertiary}
+                  value={formData.password}
+                  onChangeText={(value) => handleInputChange('password', value)}
+                  secureTextEntry={!showPassword}
+                  returnKeyType="next"
+                />
+                <TouchableOpacity
+                  style={styles.eyeButton}
+                  onPress={() => setShowPassword(!showPassword)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={24}
+                    color={AppColors.text.secondary}
+                  />
+                </TouchableOpacity>
+              </View>
               {fieldErrors.password && (
                 <Text style={styles.errorMessage}>Password must be at least 6 characters long</Text>
               )}
@@ -239,16 +256,29 @@ export default function SignUpScreen() {
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Confirm Password</Text>
-              <TextInput
-                style={[styles.input, fieldErrors.confirmPassword && styles.inputError]}
-                placeholder="Confirm your password"
-                placeholderTextColor={AppColors.text.tertiary}
-                value={formData.confirmPassword}
-                onChangeText={(value) => handleInputChange('confirmPassword', value)}
-                secureTextEntry
-                returnKeyType="done"
-                onSubmitEditing={handleSignUp}
-              />
+              <View style={styles.passwordInputContainer}>
+                <TextInput
+                  style={[styles.input, styles.passwordInput, fieldErrors.confirmPassword && styles.inputError]}
+                  placeholder="Confirm your password"
+                  placeholderTextColor={AppColors.text.tertiary}
+                  value={formData.confirmPassword}
+                  onChangeText={(value) => handleInputChange('confirmPassword', value)}
+                  secureTextEntry={!showConfirmPassword}
+                  returnKeyType="done"
+                  onSubmitEditing={handleSignUp}
+                />
+                <TouchableOpacity
+                  style={styles.eyeButton}
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={24}
+                    color={AppColors.text.secondary}
+                  />
+                </TouchableOpacity>
+              </View>
               {fieldErrors.confirmPassword && (
                 <Text style={styles.errorMessage}>Passwords do not match</Text>
               )}
@@ -342,6 +372,20 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     fontSize: 16,
     color: AppColors.text.primary,
+  },
+  passwordInputContainer: {
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  passwordInput: {
+    flex: 1,
+    paddingRight: 50,
+  },
+  eyeButton: {
+    position: 'absolute',
+    right: 16,
+    padding: 4,
   },
   inputError: {
     borderColor: AppColors.status.error,

@@ -1,4 +1,3 @@
-import { Alert } from 'react-native';
 
 export interface AuthError {
   message: string;
@@ -72,11 +71,11 @@ export class AuthErrorHandler {
       toastHandler(this.getErrorTitle(context), processedError.message);
     } else if (showAlert) {
       // Fallback to alert if toast not available
-      Alert.alert(
-        this.getErrorTitle(context),
-        processedError.message,
-        [{ text: 'OK', style: 'default' }]
-      );
+      // Alert.alert(
+      //   this.getErrorTitle(context),
+      //   processedError.message,
+      //   [{ text: 'OK', style: 'default' }]
+      // );
     }
 
     // Call custom error handler if provided

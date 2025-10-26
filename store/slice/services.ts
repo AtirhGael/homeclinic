@@ -28,7 +28,7 @@ export const getServices = createAsyncThunk(
   'user/getServices',
   async (id: string, { rejectWithValue }) => {
     try {
-      const response = await privateApi.get(`services`);
+      const response = await privateApi.get(`/services`);
       return response.data.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to get services');

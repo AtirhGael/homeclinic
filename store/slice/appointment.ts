@@ -34,7 +34,7 @@ export const createAppointment = createAsyncThunk(
   'user/createAppointment',
   async (appointmentData: appointment, { rejectWithValue }) => {
     try {
-      const response = await privateApi.post(`appointments`, appointmentData);
+      const response = await privateApi.post(`/appointments`, appointmentData);
       return response.data.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to create appointment');

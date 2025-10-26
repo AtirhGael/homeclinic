@@ -52,10 +52,10 @@ export const getNStaffs = createAsyncThunk(
   'user/getNStaffs',
   async (qty: number, { rejectWithValue }) => {
     try {
-      const response = await privateApi.post(`/get-n-staff`, { qty });
+      const response = await privateApi.post("/get-n-staff", { qty });
       return response.data.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to get user');
+      return rejectWithValue(error.response || 'Failed to get user');
     }
   }
 );
@@ -82,7 +82,31 @@ export const updateUserProfilePicture = createAsyncThunk(
   }
 );
 
-const userSlice = createSlice({
+export const getAllUsers = createAsyncThunk(
+  'user/getall',
+  async (userdata: User, {rejectWithValue}) => {
+    try {
+      const response = await privateApi.get('/users');
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue('Failed to get all users');
+    }
+  }
+)
+
+export const deleteUserById = createAsyncThunk(
+  'user/deleteUser',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      const response = await privateApi.delete(`users/${id}`);
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to delete user');
+    }
+  }
+)
+
+const userSlice = createSlice({ 
   name: 'user',
   initialState,
   reducers: {

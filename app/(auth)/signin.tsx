@@ -4,7 +4,9 @@ import { tokenUtils } from '@/services/api';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { clearError, login } from '@/store/slice/authSlice';
 import { handleAuthError } from '@/utils/authErrorHandler';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -28,6 +30,8 @@ export default function SignInScreen() {
     email: false,
     password: false,
   });
+  
+  const [showPassword, setShowPassword] = useState(false);
   
   const dispatch = useAppDispatch();
   const { isLoading, error } = useAppSelector((state) => state.auth);
@@ -105,6 +109,7 @@ export default function SignInScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right', 'top', 'bottom']}>
+      <StatusBar style='dark' />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardAvoidingView}
@@ -140,16 +145,29 @@ export default function SignInScreen() {
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={[styles.input, fieldErrors.password && styles.inputError]}
-                placeholder="Enter your password"
-                placeholderTextColor={AppColors.text.tertiary}
-                value={formData.password}
-                onChangeText={(value) => handleInputChange('password', value)}
-                secureTextEntry
-                returnKeyType="done"
-                onSubmitEditing={handleSignIn}
-              />
+              <View style={styles.passwordInputContainer}>
+                <TextInput
+                  style={[styles.input, styles.passwordInput, fieldErrors.password && styles.inputError]}
+                  placeholder="Enter your password"
+                  placeholderTextColor={AppColors.text.tertiary}
+                  value={formData.password}
+                  onChangeText={(value) => handleInputChange('password', value)}
+                  secureTextEntry={!showPassword}
+                  returnKeyType="done"
+                  onSubmitEditing={handleSignIn}
+                />
+                <TouchableOpacity
+                  style={styles.eyeButton}
+                  onPress={() => setShowPassword(!showPassword)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={24}
+                    color={AppColors.text.secondary}
+                  />
+                </TouchableOpacity>
+              </View>
               {fieldErrors.password && (
                 <Text style={styles.errorMessage}>Please enter your password</Text>
               )}
@@ -257,6 +275,20 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     fontSize: 16,
     color: AppColors.text.primary,
+  },
+  passwordInputContainer: {
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  passwordInput: {
+    flex: 1,
+    paddingRight: 50,
+  },
+  eyeButton: {
+    position: 'absolute',
+    right: 16,
+    padding: 4,
   },
   inputError: {
     borderColor: AppColors.status.error,

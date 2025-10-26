@@ -44,9 +44,11 @@ const SchedulePage = () => {
   
    useEffect(() => { 
     const staffs = async () => {
-      const response = await dispatch(getNStaffs(5));
-      console.log(response.payload, 'staffs from schedule page');
-    }
+      const response = await dispatch(getNStaffs(1)).unwrap();
+      if (getNStaffs.fulfilled.match(response)) {
+        console.log(response, 'staffs from schedule page');
+      }
+    };
     staffs();
    }, []);
   const providers: HealthcareProvider[] = [
